@@ -8,11 +8,13 @@ import java.util.List;
 
 public interface TaskManager {
 
+    List<Task> getHistory();
+
     List<Task> getAllTasks();
     Task getTaskById(int id);
     void deleteAllTasks();
-    int  createTask(Task task);   // присваивает новую id и сохраняет
-    void updateTask(Task task);   // полная замена по id
+    int  createTask(Task task);
+    void updateTask(Task task);
     void deleteTaskById(int id);
 
     List<Subtask> getAllSubtasks();

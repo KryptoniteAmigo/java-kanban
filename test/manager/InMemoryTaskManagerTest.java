@@ -256,4 +256,44 @@ public class InMemoryTaskManagerTest {
         assertEquals(subId,   history.get(1).getId(), "Вторым — сабтаск");
     }
 
+    @Test
+    public void deletingTaskShouldRemoveItFromHistory() {
+        int id = manager.createTask(new Task(0, "A", ""));
+        manager.getTaskById(id);
+        manager.deleteTaskById(id);
+
+        List<Task> hist = manager.getHistory();
+        boolean found = false;
+        for (int i = 0; i < hist.size(); i++) {
+            if (hist.get(i).getId() == id) {
+                found = true;
+                break;
+            }
+        }
+        assertFalse(found, "Удалённая задача не должна оставаться в истории");
+    }
+
+    @Test
+    public void deletingEpicShouldRemoveEpicAndSubtasksFromHistory() {
+        int epicId = manager.createEpic(new Epic(0, "E", ""));
+        int s1 = manager.createSubtask(new Subtask(0, "S1", "", epicId));
+        int s2 = manager.createSubtask(new Subtask(0, "S2", "", epicId));
+
+        manager.getEpicById(epicId);
+        manager.getSubtaskById(s1);
+        manager.getSubtaskById(s2);
+
+        manager.deleteEpicById(epicId);
+
+        List<Task> hist = manager.getHistory();
+        boolean present = false;
+        for (int i = 0; i < hist.size(); i++) {
+            int hid = hist.get(i).getId();
+            if (hid == epicId || hid == s1 || hid == s2) {
+                present = true;
+                break;
+            }
+        }
+        assertFalse(present, "После удаления эпика он и его сабтаски должны исчезнуть из истории");
+    }
 }

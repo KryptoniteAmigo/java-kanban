@@ -8,50 +8,10 @@ import java.util.List;
 import java.util.Map;
 
 public class InMemoryHistoryManager implements HistoryManager {
-    private static class Node {
-        Task task;
-        Node prev;
-        Node next;
-
-        Node(Task task) {
-            this.task = task;
-        }
-    }
 
     private final Map<Integer, Node> index = new HashMap<>();
     private Node head;
     private Node tail;
-
-    private Node linkLast(Task t) {
-        Node node = new Node(t);
-        if (tail == null) {
-            head = node;
-            tail = node;
-        } else {
-            tail.next = node;
-            node.prev = tail;
-            tail = node;
-        }
-        return node;
-    }
-
-    private void removeNode(Node node) {
-        if (node == null) return;
-        Node p = node.prev;
-        Node n = node.next;
-        if (p != null) {
-            p.next = n;
-        } else {
-            head = n;
-        }
-        if (n != null) {
-            n.prev = p;
-        } else {
-            tail = p;
-        }
-        node.prev = null;
-        node.next = null;
-    }
 
     @Override
     public void add(Task task) {
@@ -86,5 +46,46 @@ public class InMemoryHistoryManager implements HistoryManager {
             cur = cur.next;
         }
         return list;
+    }
+
+    private static class Node {
+        Task task;
+        Node prev;
+        Node next;
+
+        Node(Task task) {
+            this.task = task;
+        }
+    }
+
+    private Node linkLast(Task t) {
+        Node node = new Node(t);
+        if (tail == null) {
+            head = node;
+            tail = node;
+        } else {
+            tail.next = node;
+            node.prev = tail;
+            tail = node;
+        }
+        return node;
+    }
+
+    private void removeNode(Node node) {
+        if (node == null) return;
+        Node p = node.prev;
+        Node n = node.next;
+        if (p != null) {
+            p.next = n;
+        } else {
+            head = n;
+        }
+        if (n != null) {
+            n.prev = p;
+        } else {
+            tail = p;
+        }
+        node.prev = null;
+        node.next = null;
     }
 }

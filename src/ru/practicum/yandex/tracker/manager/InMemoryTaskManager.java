@@ -14,7 +14,7 @@ public class InMemoryTaskManager implements TaskManager {
     private final Map<Integer, Epic> epics = new HashMap<>();
     private final HistoryManager historyManager = Managers.getDefaultHistory();
 
-    private int nextId = 1;
+    protected int nextId = 1;
 
     @Override
     public List<Task> getHistory() {
@@ -66,6 +66,10 @@ public class InMemoryTaskManager implements TaskManager {
         if (removed != null) {
             historyManager.remove(id);
         }
+    }
+
+    protected void putTaskDirect(Task task) {
+        tasks.put(task.getId(), task);
     }
 
     //Subtask
@@ -132,6 +136,15 @@ public class InMemoryTaskManager implements TaskManager {
                 recalcEpicStatus(parent);
             }
             historyManager.remove(id);
+        }
+    }
+
+    protected void putSubtaskDirect(Subtask subtask) {
+        subtasks.put(subtask.getId(), subtask);
+        Epic parent = epics.get(subtask.getEpicId());
+        if (parent != null) {
+            parent.addSubtask(subtask.getId());
+            recalcEpicStatus(parent);
         }
     }
 
@@ -203,11 +216,23 @@ public class InMemoryTaskManager implements TaskManager {
         if (epic == null) {
             return Collections.emptyList();
         }
-        List<Subtask> list = new ArrayList<>();
-        for (int sid : epic.getSubtaskIds()) {
-            list.add(subtasks.get(sid));
+        List<Integer> ids = epic.getSubtaskIds();
+        List<Subtask> list = new ArrayList<>(ids.size());
+        for (int i = 0; i < ids.size(); i++) {
+            Subtask s = subtasks.get(ids.get(i));
+            if (s != null) {
+                list.add(s);
+            }
         }
         return list;
+    }
+
+    protected void putEpicDirect(Epic epic) {
+        epics.put(epic.getId(), epic);
+    }
+
+    protected void setNextIdAfterLoad(int next) {
+        this.nextId = next;
     }
 
     private int generateId() {

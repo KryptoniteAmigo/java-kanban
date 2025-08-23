@@ -14,6 +14,8 @@ public interface TaskManager {
 
     Task getTaskById(int id);
 
+    List<Task> getPrioritizedTasks();
+
     void deleteAllTasks();
 
     int  createTask(Task task);

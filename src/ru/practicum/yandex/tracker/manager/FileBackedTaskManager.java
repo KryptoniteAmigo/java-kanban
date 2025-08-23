@@ -6,12 +6,15 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.nio.charset.StandardCharsets;
 
 public class FileBackedTaskManager extends InMemoryTaskManager {
     private final File file;
+    private static final String HEADER = "id,type,title,status,description,epic,duration,start";
 
     public FileBackedTaskManager(File file) {
         this.file = file;
@@ -95,8 +98,6 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
         save();
     }
 
-    private static final String HEADER = "id,type,name,status,description,epic";
-
     private static String escape(String s) {
         if (s == null) {
             return "";
@@ -106,48 +107,68 @@ public class FileBackedTaskManager extends InMemoryTaskManager {
 
     private static String taskToString(Task task) {
         StringBuilder sb = new StringBuilder();
-        sb.append(task.getId()).append(',');
-        if (task instanceof Epic) {
-            sb.append(TaskType.EPIC);
-        } else if (task instanceof Subtask) {
-            sb.append(TaskType.SUBTASK);
-        } else {
-            sb.append(TaskType.TASK);
-        }
-        sb.append(',')
+        sb.append(task.getId()).append(',')
+                .append(task instanceof Epic ? TaskType.EPIC : (task instanceof Subtask ? TaskType.SUBTASK : TaskType.TASK)).append(',')
                 .append(escape(task.getTitle())).append(',')
                 .append(task.getStatus()).append(',')
                 .append(escape(task.getDescription())).append(',');
 
         if (task instanceof Subtask) {
             sb.append(((Subtask) task).getEpicId());
-        } else {
-            sb.append("");
         }
+
+        sb.append(',');
+        String dur = task.getDuration() == null ? "" : String.valueOf(task.getDuration().toMinutes());
+        String start = task.getStartTime() == null ? "" : task.getStartTime().toString();
+        sb.append(dur).append(',')
+                .append(start);
         return sb.toString();
     }
 
     private static Task taskFromString(String value) {
-        String[] f = value.split(",", -1);
-        int id = Integer.parseInt(f[0]);
-        TaskType type = TaskType.valueOf(f[1]);
-        String name = f[2];
-        Status status = Status.valueOf(f[3]);
-        String desc = f[4];
+        try {
+            String[] f = value.split(",", -1);
+            if (f.length < 6) {
+                throw new ManagerSaveException("Bad CSV line: " + value);
+            }
 
-        if (type == TaskType.TASK) {
-            Task t = new Task(id, name, desc);
-            t.setStatus(status);
-            return t;
-        } else if (type == TaskType.EPIC) {
-            Epic e = new Epic(id, name, desc);
-            e.setStatus(status);
-            return e;
-        } else {
-            int epicId = Integer.parseInt(f[5]);
-            Subtask s = new Subtask(id, name, desc, epicId);
-            s.setStatus(status);
-            return s;
+            int id = Integer.parseInt(f[0].trim());
+            TaskType type = TaskType.valueOf(f[1].trim());
+            String title = f[2];
+            Status status = Status.valueOf(f[3].trim());
+            String desc = f[4];
+            Integer epicId = f[5].isEmpty() ? null : Integer.parseInt(f[5].trim());
+
+            Duration dur = (f.length > 6 && !f[6].isEmpty()) ? Duration.ofMinutes(Long.parseLong(f[6].trim())) : null;
+            LocalDateTime start = (f.length > 7 && !f[7].isEmpty()) ? LocalDateTime.parse(f[7].trim()) : null;
+
+            switch (type) {
+                case TASK -> {
+                    Task t = new Task(id, title, desc);
+                    t.setStatus(status);
+                    t.setDuration(dur);
+                    t.setStartTime(start);
+                    return t;
+                }
+                case SUBTASK -> {
+                    if (epicId == null) {
+                        throw new ManagerSaveException("Subtask without epicId: " + value);
+                    }
+                    Subtask s = new Subtask(id, title, desc, epicId);
+                    s.setStatus(status);
+                    s.setDuration(dur);
+                    s.setStartTime(start);
+                    return s;
+                }
+                case EPIC -> {
+                    Epic e = new Epic(id, title, desc);
+                    e.setStatus(status);
+                    return e;
+                }
+            }
+            throw new ManagerSaveException("Unknown type: " + type);
+        } catch (RuntimeException e) {
+            throw new ManagerSaveException("Failed to parse line: " + value, e);
         }
     }
 

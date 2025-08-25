@@ -19,13 +19,32 @@ public class InMemoryHistoryManagerTest {
     }
 
     @Test
-    public void shouldKeepOnlyLast10() {
-        for (int i = 1; i <= 11; i++) {                     // добавляем 11 задач
-            historyManager.add(new Task(i, "Task " + i, "Desc"));
+    public void shouldBeUnboundedAndKeepOrder() {
+        HistoryManager hm = Managers.getDefaultHistory();
+        for (int i = 1; i <= 20; i++) {
+            hm.add(new Task(i, "T"+i, "D"));
         }
-        List<Task> history = historyManager.getHistory();
-        assertEquals(10, history.size());          // проверяем размер и что самой первой осталась Task с id=2
+        List<Task> history = hm.getHistory();
+        assertEquals(20, history.size());
+        for (int i = 0; i < 20; i++) {
+            assertEquals(i + 1, history.get(i).getId());
+        }
+    }
+
+
+    @Test
+    public void shouldDeduplicateAndKeepLastOccurrence() {
+        HistoryManager hm = Managers.getDefaultHistory();
+        Task t1 = new Task(1, "A", "");
+        Task t2 = new Task(2, "B", "");
+        hm.add(t1);
+        hm.add(t2);
+        hm.add(t1);
+
+        List<Task> history = hm.getHistory();
+        assertEquals(2, history.size());
         assertEquals(2, history.get(0).getId());
+        assertEquals(1, history.get(1).getId());
     }
 
     @Test
